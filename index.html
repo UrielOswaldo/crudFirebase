@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html >
+    <title></title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootswatch/4.5.2/litera/bootstrap.min.css" integrity="sha384-enpDwFISL6M3ZGZ50Tjo8m65q06uLVnyvkFO3rsoW0UC15ATBFz3QEhr3hmxpYsn" crossorigin="anonymous">
+    <body onload="cargarDatos()">
+        <form>
+            <br><table align="center" class = "table table-hover">
+                <tr>
+                    <td HEIGHT="50">
+                        <input class = "form-control" type="number" id="matri" placeholder="Matricula del Alumno">
+                        <br><input class = "form-control" type="text" id="nom" placeholder="Nombre del Alumno">
+                        <br><input class = "form-control" type="number" id="ed"placeholder="Edad del Alumno">
+                        <br><select class = "form-control" name="sex" id="sex" >
+                            <option value="Mujer" >Mujer</option> 
+                            <option value="Hombre" >Hombre</option>
+                        </select>
+                        <br><input class = "form-control" type="number" id="prom" placeholder="Promedio del Alumno">
+                        <br><input class = "btn btn-success" type="button" id="btn" onclick="agregarDatos()" value="Agregar"><input  class = "btn btn-danger" type="button" id="btnCancelar" onclick="limpiar()" value="Cancelar">
+                    </td>
+                    <td>
+                        <input type="text|number" class = "form-control" id="consulta" onkeyup="consultaVacia()" placeholder="Nombre o Matricula del Alumno a Consultar">
+                        <div class="radio">
+                            <input type="radio" name="busqueda" id="cNombre"  checked>Nombre
+                            <input type="radio" name="busqueda" id="cMatricula"  >Matricula
+                        </div>
+                        <input type="button" class = "btn btn-info" value="Consultar" onclick="consultarAlumno()">
+                        <br><br><label>Total de Alumnos:   </label><label id="totalA">0</label>
+                        <br><label>Promedio Total de los Alumnos:    </label><label id="promedioA">0</label>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <label >Hombres</label>
+                        <br><table id="tablaAlumnos" class = "table table-hover">
+                            <tr class = "table-danger"><td>Matricula</td><td>Nombre</td><td>Edad</td><td>Sexo</td><td>Promedio</td><td colspan="2"></td></tr>
+                            <tbody id="tbodyH"></tbody>
+                        </table>
+                    </td>
+                    <td>
+                        <label >Mujeres</label>
+                        <br><table id="tablaAlumnas" class = "table table-hover">
+                            <tr class = "table-primary"><td>Matricula</td><td>Nombre</td><td>Edad</td><td>Sexo</td><td>Promedio</td><td colspan="2"></td></tr>
+                            <tbody id="tbodyM"></tbody>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </form>
+        <script src="https://www.gstatic.com/firebasejs/7.24.0/firebase-app.js"></script>
+        <!-- TODO: Add SDKs for Firebase products that you want to use
+            https://firebase.google.com/docs/web/setup#available-libraries -->
+
+        <script>
+            // Your web app's Firebase configuration
+            var firebaseConfig = {
+            apiKey: "AIzaSyD-pFRr9MOsvnhWWO791u4AzW7o7Bc7UNs",
+            authDomain: "web-alumnos.firebaseapp.com",
+            databaseURL: "https://web-alumnos.firebaseio.com",
+            projectId: "web-alumnos",
+            storageBucket: "web-alumnos.appspot.com",
+            messagingSenderId: "1043582830380",
+            appId: "1:1043582830380:web:ea723cd94d9a0a4c3e8e89"
+            };
+            // Initialize Firebase
+            firebase.initializeApp(firebaseConfig);
+        </script>
+        <script src="https://www.gstatic.com/firebasejs/7.24.0/firebase-database.js"></script>
+        <script>
+            const db = firebase.database();
+            function Alumno(matricula, nombre, edad, sexo, promedio){
+                this.matricula=matricula;
+                this.nombre=nombre;
+                this.edad=edad;
+                this.sexo=sexo;
+                this.promedio=promedio;
+            }
+            var baseDaDatos =[];
+            var cont;
+            function cargarDatos(){
+                baseDaDatos.length=0;
+                suma=0;
+                db.ref('alumno').on("child_added",function(data){
+                    var alumnoO=data.val();
+                    baseDaDatos.push(alumnoO);
+                    if (alumnoO.sexo=="Hombre") {
+                        document.getElementById("tbodyH").innerHTML+="<tbody id='tbodyH'><tr class='selected' ><td>"+
+                        alumnoO.matricula+"</td><td>"+alumnoO.nombre+"</td><td>"+
+                        alumnoO.edad+"</td><td>"+alumnoO.sexo+"</td><td>"+alumnoO.promedio+"</td><td><input class = 'btn btn-success disabled' type='button' onclick='editar("+alumnoO.matricula+")' value='Editar'></td><td><input type='button' class = 'btn btn-warning disabled' onclick='eliminar("+alumnoO.matricula+")' value='Eliminar'></td></tr>";
+                    } else {
+                        document.getElementById("tbodyM").innerHTML+="<tbody id='tbodyM'><tr class='selected' ><td>"+
+                        alumnoO.matricula+"</td><td>"+alumnoO.nombre+"</td><td>"+
+                        alumnoO.edad+"</td><td>"+alumnoO.sexo+"</td><td>"+alumnoO.promedio+"</td><td><input class = 'btn btn-success disabled' type='button' onclick='editar("+alumnoO.matricula+")' value='Editar'></td><td><input type='button' class = 'btn btn-warning disabled' onclick='eliminar("+alumnoO.matricula+")' value='Eliminar'></td></tr>";                        
+                    }
+                    suma+=parseInt(alumnoO.promedio);
+                    document.getElementById("totalA").innerHTML=" "+baseDaDatos.length;
+                    document.getElementById("promedioA").innerHTML=" "+(suma/baseDaDatos.length).toFixed(2);
+                });
+            }
+            function agregarDatos(){
+                if (document.getElementById("btn").value=="Agregar") {
+                    if (validarCampos() ) {
+                        if (validarMatricula(document.getElementById("matri").value)) {
+                            alert("La matricula ya se encuentra registrada...");
+                            limpiar();
+                        } else {
+                            alumno=new Alumno(document.getElementById("matri").value,document.getElementById("nom").value,document.getElementById("ed").value,document.getElementById("sex").value,document.getElementById("prom").value);
+                            db.ref('alumno/'+alumno.matricula).set(alumno);
+                            document.getElementById("tbodyH").innerHTML=""
+                            document.getElementById("tbodyM").innerHTML=""
+                            cargarDatos();
+                            limpiar();
+                        }
+                    } else {
+                        alert("Debe ingresar todo los datos necesarios...");
+                    }
+                } else {
+                    alumno=new Alumno(document.getElementById("matri").value,document.getElementById("nom").value,document.getElementById("ed").value,document.getElementById("sex").value,document.getElementById("prom").value);
+                    db.ref('alumno/'+alumno.matricula).update(alumno);
+                    document.getElementById("tbodyH").innerHTML=""
+                    document.getElementById("tbodyM").innerHTML=""
+                    cargarDatos();
+                    limpiar();
+                    document.getElementById("btn").value="Agregar";
+                    document.getElementById("matri").disabled=false;
+                }
+            }
+            function limpiar(){
+                document.getElementById("matri").value="";
+                document.getElementById("nom").value="";
+                document.getElementById("ed").value="";
+                document.getElementById("sex").value="";
+                document.getElementById("prom").value="";
+            }
+            function editar(matricula){
+                for (let i = 0; i < baseDaDatos.length; i++) {
+                    if (baseDaDatos[i].matricula==matricula) {
+                        document.getElementById("matri").value=baseDaDatos[i].matricula;
+                        document.getElementById("nom").value=baseDaDatos[i].nombre;
+                        document.getElementById("ed").value=baseDaDatos[i].edad;
+                        document.getElementById("sex").value=baseDaDatos[i].sexo;
+                        document.getElementById("prom").value=baseDaDatos[i].promedio;
+                    }
+                }
+                document.getElementById("btn").value="Almacenar modificaciones";
+                document.getElementById("matri").disabled=true;
+            }
+            function eliminar(matricula){
+                document.getElementById("tbodyH").innerHTML=""
+                document.getElementById("tbodyM").innerHTML=""
+                db.ref('alumno/'+matricula).remove();
+                cargarDatos();
+            }
+            function consultarAlumno(){
+                var bRadio=document.getElementsByName("busqueda");
+                dato=document.getElementById("consulta").value;
+                if (bRadio[0].checked) {
+                    for (let i = 0; i < baseDaDatos.length; i++) {
+                        if (baseDaDatos[i].nombre==dato) {
+                            cargarDatosDeBusqueda(i);
+                            return true;
+                        }
+                    }
+                } else {
+                    for (let i = 0; i < baseDaDatos.length; i++) {
+                        if (baseDaDatos[i].matricula==dato) {
+                            cargarDatosDeBusqueda(i);
+                            return true;
+                        }
+                    }
+                }
+                alert("No se encontraron alumnos: Verifique la busqueda...");
+            }
+            function cargarDatosDeBusqueda(indice){
+                document.getElementById("tbodyH").innerHTML=""
+                document.getElementById("tbodyM").innerHTML=""
+                if (baseDaDatos[indice].sexo=="Mujer") {
+                    document.getElementById("tbodyM").innerHTML="<tbody id='tbodyM'><tr class='selected' ><td>"+
+                        baseDaDatos[indice].matricula+"</td><td>"+baseDaDatos[indice].nombre+"</td><td>"+baseDaDatos[indice].edad+"</td><td>"+baseDaDatos[indice].sexo+"</td><td>"+baseDaDatos[indice].promedio+
+                        "</td><td><input class = 'btn btn-success disabled' type='button' onclick='editar("+baseDaDatos[indice].matricula+
+                        ")' value='Editar'></td><td><input class = 'btn btn-warning disabled' type='button' onclick='eliminar("+baseDaDatos[indice].matricula+")' value='Eliminar'></td></tr>";
+                } else {
+                    document.getElementById("tbodyH").innerHTML="<tbody id='tbodyH'><tr class='selected' ><td>"+baseDaDatos[indice].matricula+"</td><td>"+
+                        baseDaDatos[indice].nombre+"</td><td>"+baseDaDatos[indice].edad+"</td><td>"+baseDaDatos[indice].sexo+"</td><td>"+baseDaDatos[indice].promedio+
+                        "</td><td><input class = 'btn btn-success disabled' type='button' onclick='editar("+baseDaDatos[indice].matricula+
+                        ")' value='Editar'></td><td><input class = 'btn btn-warning disabled' type='button' onclick='eliminar("+baseDaDatos[indice].matricula+")' value='Eliminar'></td></tr>";
+                }
+            }
+            function consultaVacia(){
+                if(document.getElementById("consulta").value==""){
+                    document.getElementById("tbodyH").innerHTML=""
+                    document.getElementById("tbodyM").innerHTML=""
+                    cargarDatos();
+                }
+            }
+            function validarMatricula(matricula){
+                for (let i = 0; i < baseDaDatos.length; i++) {
+                    if (matricula==baseDaDatos[i].matricula) {
+                        return true;
+                    }
+                }
+            }
+            function validarCampos(){
+                if (document.getElementById("matri").value!=""&&document.getElementById("nom").value!=""&&document.getElementById("ed").value!=""&&document.getElementById("prom").value!=""&&document.getElementById("sex").value!="") {
+                    return true;
+                } 
+                return false;
+            }
+        </script>
+    </body>
+</html>
